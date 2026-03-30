@@ -1,23 +1,23 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
 import { User } from './users/entities/user.entity';
 
 @Module({
   imports: [
-    // 1. Setup the Database Connection
     TypeOrmModule.forRoot({
       type: 'mysql',
       host: 'localhost',
       port: 3306,
-      username: 'root',      // XAMPP default
-      password: '',          // XAMPP default is empty
+      username: 'root',
+      password: '',
       database: 'assessment_db',
-      entities: [User],      // Tell TypeORM about your User table
-      synchronize: true,     // Auto-creates the table in XAMPP!
+      entities: [User],
+      synchronize: true,
     }),
-    // 2. Import your Users logic
     UsersModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

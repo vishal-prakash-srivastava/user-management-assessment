@@ -1,62 +1,138 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import axios from 'axios';
-import { Button, Box } from '@mui/material';
+import api from '@/utils/api';
+import { Button, Box, Stack } from '@mui/material';
+import UserModal from './UserModal';
+import { User } from '@/interface/User';
 
 export default function UserTable() {
-  const [users, setUsers] = useState([]);
-  const [isMounted, setIsMounted] = useState(false); // 1. Add mounted state
-
-  useEffect(() => {
-    setIsMounted(true); // 2. Set to true once the browser is ready
-    fetchUsers();
-  }, []);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/users');
-      setUsers(response.data);
-    } catch (error) {
-      console.error("Error fetching users:", error);
+      const response = await api.get('/users');
+      setUsers(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      setUsers([]);
     }
   };
 
-  const handleDelete = async (id: number) => {
+  useEffect(() => {
+    let isIgnore = false;
+
+    const init = async () => {
+      if (!isIgnore) {
+        setIsMounted(true);
+        await fetchUsers();
+      }
+    };
+
+    void init();
+
+    return () => {
+      isIgnore = true;
+    };
+  }, []);
+
+  const handleDelete = async (id: number, type: 'soft' | 'hard') => {
+    if (!confirm(`Are you sure you want to perform a ${type} delete?`)) return;
     try {
-      await axios.delete(`http://localhost:3000/users/${id}`);
-      fetchUsers(); 
+      await api.delete(`/users/${id}/${type}`);
+      fetchUsers();
     } catch (err) {
       console.error("Delete failed", err);
     }
   };
 
+  const handleEdit = (user: User) => {
+    setSelectedUser(user);
+    setOpen(true);
+  };
+
   const columns: GridColDef[] = [
-    { field: 'id', headerName: 'ID', width: 90 },
-    { field: 'first_name', headerName: 'First Name', width: 150 },
-    { field: 'last_name', headerName: 'Last Name', width: 150 },
-    { field: 'email', headerName: 'Email', width: 250 },
+    { field: 'id', headerName: 'ID', width: 70 },
+    { field: 'first_name', headerName: 'First Name', flex: 1, minWidth: 150 },
+    { field: 'last_name', headerName: 'Last Name', flex: 1, minWidth: 150 },
+    { field: 'email', headerName: 'Email', flex: 1.5, minWidth: 250 },
     {
       field: 'action',
       headerName: 'Actions',
-      width: 150,
+      width: 280,
+      headerAlign: 'center',
       renderCell: (params) => (
-        <Button variant="outlined" color="error" onClick={() => handleDelete(params.row.id)}>
-          Delete
-        </Button>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100%',
+            width: '100%'
+          }}
+        >
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => handleEdit(params.row as User)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              size="small"
+              onClick={() => handleDelete(params.row.id, 'soft')}
+            >
+              Soft
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              size="small"
+              onClick={() => handleDelete(params.row.id, 'hard')}
+            >
+              Hard
+            </Button>
+          </Stack>
+        </Box>
       ),
     },
   ];
 
-  // 3. Prevent the server from rendering the DataGrid prematurely
   if (!isMounted) return null;
 
   return (
-    <Box sx={{ height: 400, width: '100%', mt: 4 }} suppressHydrationWarning>
-      <DataGrid 
-        rows={users} 
-        columns={columns} 
-        getRowId={(row) => row.id} // Important for DataGrid!
+    <Box sx={{ p: 4 }}>
+      <Button
+        variant="contained"
+        onClick={() => { setSelectedUser(null); setOpen(true); }}
+        sx={{ mb: 2 }}
+      >
+        + Add New User
+      </Button>
+
+      <Box sx={{ height: 500, width: '100%', bgcolor: 'white', boxShadow: 2, borderRadius: 2 }}>
+        <DataGrid
+          rows={users}
+          columns={columns}
+          getRowId={(row) => row.id}
+          pageSizeOptions={[5, 10, 25]}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 5 } },
+          }}
+        />
+      </Box>
+
+      <UserModal
+        key={selectedUser?.id || 'new'}
+        open={open}
+        onClose={() => setOpen(false)}
+        onUserAdded={fetchUsers}
+        initialData={selectedUser}
       />
     </Box>
   );

@@ -1,0 +1,10 @@
+"use client";
+import UserTable from '@/components/UserTable';
+
+export default function UsersPage() {
+  return (
+    <div style={{ padding: '20px' }}>
+      <UserTable />
+    </div>
+  );
+}

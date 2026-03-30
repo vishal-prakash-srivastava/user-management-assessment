@@ -7,7 +7,7 @@ import { CreateUserDto, UpdateUserDto } from './dto/user.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(@InjectRepository(User) private repo: Repository<User>) { }
+  constructor(@InjectRepository(User) private repo: Repository<User>) {}
 
   async create(dto: CreateUserDto): Promise<User> {
     const salt = await bcrypt.genSalt();
@@ -36,7 +36,7 @@ export class UsersService {
       delete dto.password;
     }
 
-    delete (dto as any).id;
+    delete (dto as { id?: number }).id;
 
     await this.repo.update(id, dto);
     return this.repo.findOne({ where: { id } });
